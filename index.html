@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Task Reminder</title>
+    
+    <!-- KONFIGURASI PWA -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#111827" id="theme-color-meta">
+    <meta name="application-name" content="Task Reminder">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzNiODJmNiI+PHBhdGggZD0iTTEyIDJhMTAgMTAgMCAxIDAgMTAgMTBBMTAgMTAgMCAwIDAgMTIgMnptMCAxOGEtOCA4IDAgMSAxIDgtOCBBOCA4IDAgMCAxIDEyIDIwem0xLTExaC0ydjVoMm0wIDRoLTJ2MmgyeiIvPjwvc3ZnPg==">
+    
+    <!-- INLINE PWA MANIFEST DENGAN ICON -->
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlRhc2sgUmVtaW5kZXIiLAogICJzaG9ydF9uYW1lIjogIlRhc2siLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzExMTgyNyIsCiAgInRoZW1lX2NvbG9yIjogIiMxMTE4MjciLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBIUjJaeUI0YlcxdWMyMDlJbWgwZEhBNkx5OTNkM2N1ZHpNdWIzSm5Mekl3TURBdmMzWm5JaUIyYVdWM1FtOTRQU0l3SURBZ01qUWdNalFpSUdabWJHeDkiamlJMk1USm1OaUkrUEhCaGRHZ2daRDBpVFRFeUlESmhNVEFnTVRBZ01DQXhJREFnTVRBZ01UQkJNVEFnTVRBZ01DQXdJREFnTVRJd01ubHBiVEEgTVRnaGFUOGdPQ0F3SURFZ01TQTRMVGdnUVRnZ09DQXdJREFnTVNBeE1pQXlNSGhwYlRFdE1URm9MVEl2TlRneU1UaG1NQ0EwYkMweWRqSmlNeUkvUGp3dmMzWm5QZz09IiwKICAgICAgInNpemVzIjogIjE5MngxOTIgNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3N2Zyt4bWwiLAogICAgICAicHVycG9zZSI6ICJhbnkgbWFza2FibGUiCiAgICB9CiAgXQp9">
+
+    <!-- INLINE SERVICE WORKER UNTUK INSTALLATION PROMPT -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', (e) => {
+                    self.skipWaiting();
+                });
+                self.addEventListener('activate', (e) => {
+                    e.waitUntil(clients.claim());
+                });
+                self.addEventListener('fetch', (e) => {
+                    // Cache strategy sederhana agar lolos kriteria PWA
+                    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register(swUrl)
+                    .then(reg => console.log('Service Worker Berhasil Terdaftar (PWA Ready)'))
+                    .catch(err => console.log('Service Worker Gagal', err));
+            });
+        }
+    </script>
+    
+    <!-- LIBRARY & FRAMEWORK -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        body { 
+            -webkit-tap-highlight-color: transparent; 
+            overscroll-behavior-y: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            background-color: #f3f4f6;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Custom scrollbar for desktop */
+        @media (min-width: 768px) {
+            .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 10px; }
+            .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.8); }
+        }
+
+        .active-press:active { transform: scale(0.96); transition: transform 0.1s; }
+        
+        @keyframes pulse-screen {
+            0% { box-shadow: inset 0 0 0 0 rgba(239, 68, 68, 0); }
+            50% { box-shadow: inset 0 0 50px 20px rgba(239, 68, 68, 0.5); }
+            100% { box-shadow: inset 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .alarm-active { animation: pulse-screen 1s infinite; }
+        
+        /* Status Indicators */
+        .status-dot { position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; z-index: 10; }
+        .dark-mode .status-dot { border-color: #1f2937; }
+        .status-online { background-color: #22c55e; }
+        .status-idle { background-color: #eab308; }
+        .status-dnd { background-color: #ef4444; }
+        .status-invisible { background-color: #6b7280; }
+
+        /* Custom Borders */
+        .border-wrapper { position: relative; display: inline-block; border-radius: 9999px; transition: transform 0.2s; }
+        .border-default img { border: 2px solid rgba(156, 163, 175, 0.5); }
+        .border-blue_glow { box-shadow: 0 0 15px #3b82f6; border-radius: 50%; } .border-blue_glow img { border: 2px solid #60a5fa; }
+        .border-gold_rush { background: linear-gradient(45deg, #ffd700, #ffec8b, #ffd700); padding: 4px; } .border-gold_rush img { border: 2px solid #b8860b; }
+        .border-crimson { background: linear-gradient(to bottom, #ef4444, #7f1d1d); padding: 4px; box-shadow: 0 0 10px #ef4444; } .border-crimson img { border: 2px solid #450a0a; }
+        .border-rainbow { background: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet); padding: 4px; animation: spin 4s linear infinite; } .border-rainbow img { border: 2px solid white; }
+        .border-neon_pink { box-shadow: 0 0 15px #ec4899; border-radius: 50%; } .border-neon_pink img { border: 2px solid #f472b6; }
+        .border-magma { background: linear-gradient(180deg, #facc15, #ef4444); padding: 4px; } .border-magma img { border: 2px solid #7f1d1d; }
+        .border-cyber { border: 3px dashed #22d3ee; border-radius: 50%; padding: 2px; } .border-cyber img { border: 1px solid #0891b2; }
+        .border-forest { background: linear-gradient(45deg, #22c55e, #14532d); padding: 4px; } .border-forest img { border: 2px solid #bbf7d0; }
+        .border-pixel { box-shadow: 4px 0 0 #000, -4px 0 0 #000, 0 -4px 0 #000, 0 4px 0 #000; border-radius: 0; padding: 2px; } .border-pixel img { border-radius: 0; border: 2px solid white; }
+        @keyframes spin { 100% { filter: hue-rotate(360deg); } }
+
+        /* Chat Bubbles */
+        .chat-bubble { max-width: 75%; padding: 8px 12px; border-radius: 16px; position: relative; word-wrap: break-word; }
+        .chat-bubble.me { background-color: #3b82f6; color: white; border-bottom-right-radius: 4px; margin-left: auto; }
+        .chat-bubble.friend { background-color: #374151; color: white; border-bottom-left-radius: 4px; margin-right: auto; }
+        .light-mode .chat-bubble.friend { background-color: #e5e7eb; color: #1f2937; }
+    </style>
+</head>
+<body class="h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
+    <div id="root" class="h-full"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- ICONS ---
+        const Icon = ({ path, className, size = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>;
+        const ClockIcon = (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>} />;
+        const PlusIcon = (p) => <Icon {...p} path={<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>} />;
+        const TrashIcon = (p) => <Icon {...p} path={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></>} />;
+        const CheckCircleIcon = (p) => <Icon {...p} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />;
+        const XIcon = (p) => <Icon {...p} path={<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>} />;
+        const DownloadIcon = (p) => <Icon {...p} path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>} />;
+        const SunIcon = (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>} />;
+        const MoonIcon = (p) => <Icon {...p} path={<><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></>} />;
+        const CameraIcon = (p) => <Icon {...p} path={<><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></>} />;
+        const SearchIcon = (p) => <Icon {...p} path={<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>} />;
+        const UserPlusIcon = (p) => <Icon {...p} path={<><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></>} />;
+        const BellIcon = (p) => <Icon {...p} path={<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></>} />;
+        const FlameIcon = (p) => <Icon {...p} path={<><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-2.24-4.053-5.58-5.5a1 1 0 0 1-.22-.22c1.7 5.2.1 6.8-2.2 8.5 2.5 1 4.5 2.5 6.5 2.72Z"/><path d="M12 21.5c-3.5 0-6.5-2.5-7-7 .5-2 3-3 3-5 1.5 2.5 4 4 6 4 3 0 5-3 5-5 .5 1.5 1.5 3 1.5 6 0 3.5-3.5 7-8.5 7Z"/></>} />;
+        const CoinIcon = (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></>} />;
+        const UserIcon = (p) => <Icon {...p} path={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>} />;
+        const UsersIcon = (p) => <Icon {...p} path={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>} />;
+        const StoreIcon = (p) => <Icon {...p} path={<><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7"/></>} />;
+        const ShieldIcon = (p) => <Icon {...p} path={<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>} />;
+        const StopIcon = (p) => <Icon {...p} path={<><rect x="4" y="4" width="16" height="16" rx="2" ry="2" /></>} />;
+        const MessageCircleIcon = (p) => <Icon {...p} path={<><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></>} />;
+        const SendIcon = (p) => <Icon {...p} path={<><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>} />;
+        const LockIcon = (p) => <Icon {...p} path={<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>} />;
+        const PencilIcon = (p) => <Icon {...p} path={<><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></>} />;
+        const SparklesIcon = (p) => <Icon {...p} path={<><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 5h4"/><path d="M3 9h4"/></>} />;
+        const BrainIcon = (p) => <Icon {...p} path={<><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></>} />;
+        const FrameIcon = (p) => <Icon {...p} path={<><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></>} />;
+
+        // --- CONSTANTS ---
+        const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+        const AVATARS = [
+            "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix",
+            "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka",
+            "https://api.dicebear.com/7.x/adventurer/svg?seed=Zoey",
+            "https://api.dicebear.com/7.x/adventurer/svg?seed=Christopher",
+            "https://api.dicebear.com/7.x/adventurer/svg?seed=Nala",
+            "https://api.dicebear.com/7.x/adventurer/svg?seed=Midnight"
+        ];
+        const BORDERS = [
+            { id: 'default', name: 'Polos', price: 0, css: 'border-default' },
+            { id: 'blue_glow', name: 'Neon Biru', price: 500, css: 'border-blue_glow' },
+            { id: 'neon_pink', name: 'Neon Pink', price: 750, css: 'border-neon_pink' },
+            { id: 'forest', name: 'Hutan', price: 1000, css: 'border-forest' },
+            { id: 'gold_rush', name: 'Sultan Emas', price: 2000, css: 'border-gold_rush' },
+            { id: 'cyber', name: 'Cyberpunk', price: 2500, css: 'border-cyber' },
+            { id: 'magma', name: 'Magma', price: 3000, css: 'border-magma' },
+            { id: 'crimson', name: 'Raja Merah', price: 3500, css: 'border-crimson' },
+            { id: 'pixel', name: 'Pixel Art', price: 4000, css: 'border-pixel' },
+            { id: 'rainbow', name: 'Pelangi RGB', price: 6000, css: 'border-rainbow' }
+        ];
+
+        // --- MOCK DATABASE (SIMULATION) ---
+        const MOCK_USERS = [
+            { uid: 'u1', name: 'Budi Gaming', streak: 12, avatar: AVATARS[1], border: 'blue_glow', status: 'online' },
+            { uid: 'u2', name: 'Siti Pro', streak: 45, avatar: AVATARS[2], border: 'gold_rush', status: 'idle' },
+            { uid: 'u3', name: 'Rina RPG', streak: 5, avatar: AVATARS[3], border: 'neon_pink', status: 'dnd' },
+            { uid: 'u4', name: 'Raka Coder', streak: 89, avatar: AVATARS[4], border: 'cyber', status: 'online' }
+        ];
+
+        // --- HELPER FUNCTIONS ---
+        const getDayName = (date) => {
+            const dayIndex = date.getDay(); 
+            const shiftedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
+            return DAYS[shiftedIndex];
+        };
+        const getLevel = (xp) => Math.floor(xp / 100) + 1;
+        const getLevelProgress = (xp) => xp % 100;
+
+        // --- COMPONENT: USER AVATAR ---
+        const UserAvatar = ({ src, borderId = 'default', size = 'md', status, isDarkMode }) => {
+            const borderClass = BORDERS.find(b => b.id === borderId)?.css || 'border-default';
+            let dimClass = 'w-10 h-10', dotClass = 'w-3 h-3 border-2';
+            if(size === 'sm') { dimClass = 'w-8 h-8'; }
+            if(size === 'lg') { dimClass = 'w-14 h-14'; }
+            if(size === 'xl') { dimClass = 'w-24 h-24'; dotClass = 'w-6 h-6 border-4'; }
+            
+            return (
+                <div className={`relative inline-block border-wrapper ${borderClass}`}>
+                    <img src={src} className={`${dimClass} rounded-full object-cover bg-gray-200`} alt="Avatar" />
+                    {status && <div className={`status-dot status-${status} ${dotClass} absolute bottom-0 right-0 ${isDarkMode ? 'border-gray-900' : 'border-white'}`}></div>}
+                </div>
+            );
+        };
+
+        // --- MAIN APP COMPONENT ---
+        function App() {
+            // STATE: DATA
+            const [schedules, setSchedules] = useState(() => JSON.parse(localStorage.getItem('mySchedules')) || []);
+            const [points, setPoints] = useState(() => parseInt(localStorage.getItem('points') || '50'));
+            const [xp, setXp] = useState(() => parseInt(localStorage.getItem('xp') || '0'));
+            const [streak, setStreak] = useState(() => parseInt(localStorage.getItem('streak') || '0'));
+            const [freezeInventory, setFreezeInventory] = useState(() => parseInt(localStorage.getItem('freeze') || '0'));
+            const [lastActiveDate, setLastActiveDate] = useState(() => localStorage.getItem('lastActiveDate') || '');
+            const [userStatus, setUserStatus] = useState(() => localStorage.getItem('userStatus') || 'online');
+            const [ownedBorders, setOwnedBorders] = useState(() => JSON.parse(localStorage.getItem('ownedBorders')) || ['default']);
+            const [userProfile, setUserProfile] = useState(() => {
+                const saved = localStorage.getItem('userProfile');
+                const initial = saved ? JSON.parse(saved) : { name: 'Player' + Math.floor(Math.random()*1000), avatar: AVATARS[0] };
+                if(!initial.border) initial.border = 'default';
+                return initial;
+            });
+
+            // STATE: SOCIAL (SIMULATED)
+            const [onlineFriends, setOnlineFriends] = useState(() => JSON.parse(localStorage.getItem('onlineFriends')) || []);
+            const [incomingRequests, setIncomingRequests] = useState([]); 
+            const [searchResults, setSearchResults] = useState([]);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [activeChatFriend, setActiveChatFriend] = useState(null);
+            const [chatMessages, setChatMessages] = useState({});
+            const [newMessage, setNewMessage] = useState('');
+
+            // STATE: UI
+            const [activeTab, setActiveTab] = useState('home');
+            const [selectedDay, setSelectedDay] = useState(getDayName(new Date()));
+            const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') !== 'light'); // Default Dark
+            const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+            const [showSearchModal, setShowSearchModal] = useState(false);
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [toastMessage, setToastMessage] = useState(null);
+            
+            // STATE: TASK INPUT
+            const [newTime, setNewTime] = useState('07:00');
+            const [newEndTime, setNewEndTime] = useState('08:00');
+            const [newTitle, setNewTitle] = useState('');
+            const [newDay, setNewDay] = useState(getDayName(new Date()));
+            
+            // STATE: AI
+            const [aiPrompt, setAiPrompt] = useState('');
+            const [isAiLoading, setIsAiLoading] = useState(false);
+            const [showAiInput, setShowAiInput] = useState(false);
+
+            // STATE: SYSTEM
+            const [currentTime, setCurrentTime] = useState(new Date());
+            const [isRinging, setIsRinging] = useState(false);
+            const [currentAlarmTitle, setCurrentAlarmTitle] = useState('');
+            const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+            // REFS
+            const audioContextRef = useRef(null);
+            const oscillatorRef = useRef(null);
+            const notificationsSentRef = useRef(new Set());
+            const messagesEndRef = useRef(null);
+            const fileInputRef = useRef(null);
+
+            // --- EFFECTS ---
+
+            // Persist Data
+            useEffect(() => { localStorage.setItem('mySchedules', JSON.stringify(schedules)); }, [schedules]);
+            useEffect(() => { localStorage.setItem('points', points); }, [points]);
+            useEffect(() => { localStorage.setItem('xp', xp); }, [xp]);
+            useEffect(() => { localStorage.setItem('streak', streak); }, [streak]);
+            useEffect(() => { localStorage.setItem('freeze', freezeInventory); }, [freezeInventory]);
+            useEffect(() => { localStorage.setItem('lastActiveDate', lastActiveDate); }, [lastActiveDate]);
+            useEffect(() => { localStorage.setItem('userProfile', JSON.stringify(userProfile)); }, [userProfile]);
+            useEffect(() => { localStorage.setItem('userStatus', userStatus); }, [userStatus]);
+            useEffect(() => { localStorage.setItem('ownedBorders', JSON.stringify(ownedBorders)); }, [ownedBorders]);
+            useEffect(() => { localStorage.setItem('onlineFriends', JSON.stringify(onlineFriends)); }, [onlineFriends]);
+            useEffect(() => { localStorage.setItem('theme', isDarkMode ? 'dark' : 'light'); }, [isDarkMode]);
+
+            // Clean past tasks
+            useEffect(() => {
+                const todayShiftedIndex = (new Date().getDay() + 6) % 7; 
+                setSchedules(prev => {
+                    const clean = prev.filter(t => DAYS.indexOf(t.day) >= todayShiftedIndex);
+                    if (clean.length !== prev.length) setTimeout(() => showToast("Jadwal lampau dibersihkan"), 500);
+                    return clean;
+                });
+            }, []);
+
+            // Timer & Notification Loop
+            useEffect(() => {
+                const timer = setInterval(() => {
+                    const now = new Date();
+                    setCurrentTime(now);
+                    checkNotifications(now);
+                }, 1000);
+                return () => clearInterval(timer);
+            }, [schedules, userStatus]);
+
+            // Daily Login Logic
+            useEffect(() => {
+                const today = new Date().toDateString();
+                if (lastActiveDate !== today) {
+                    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+                    const isConsecutive = lastActiveDate === yesterday.toDateString();
+                    
+                    if (lastActiveDate && !isConsecutive) {
+                         if (freezeInventory > 0) {
+                             setFreezeInventory(f => f - 1);
+                             showToast("❄️ Freeze Aktif! Streak aman.");
+                             setStreak(s => s + 1);
+                         } else {
+                             setStreak(1);
+                             showToast("Streak terputus!");
+                         }
+                    } else {
+                        setStreak(s => s + 1);
+                        showToast(`Login Harian! +10 EXP`);
+                        setXp(x => x + 10);
+                    }
+                    setLastActiveDate(today);
+                }
+            }, []);
+
+            // Theme Application
+            const theme = {
+                bg: isDarkMode ? 'bg-gray-900' : 'bg-gray-50',
+                text: isDarkMode ? 'text-white' : 'text-gray-800',
+                subText: isDarkMode ? 'text-gray-400' : 'text-gray-500',
+                cardBg: isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm',
+                inputBg: isDarkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-800 border-gray-300',
+                navBg: isDarkMode ? 'bg-gray-800 border-t border-gray-700' : 'bg-white border-t border-gray-200 shadow-lg'
+            };
+
+            // --- FUNCTIONS ---
+
+            const showToast = (msg) => {
+                setToastMessage(msg);
+                setTimeout(() => setToastMessage(null), 3000);
+            };
+
+            const playCoinSound = () => {
+                if (userStatus === 'dnd') return;
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContext) return;
+                    const ctx = new AudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sine'; 
+                    osc.frequency.setValueAtTime(800, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                    osc.start(); osc.stop(ctx.currentTime + 0.1);
+                } catch(e) {}
+            };
+
+            const triggerAlarm = (title) => {
+                if (userStatus === 'dnd' || isRinging) return;
+                setIsRinging(true);
+                setCurrentAlarmTitle(title);
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    audioContextRef.current = ctx;
+                    const osc = ctx.createOscillator();
+                    osc.connect(ctx.destination);
+                    osc.type = 'square';
+                    const interval = setInterval(() => {
+                        if(oscillatorRef.current) osc.frequency.value = osc.frequency.value === 800 ? 1000 : 800;
+                        else clearInterval(interval);
+                    }, 500);
+                    osc.start();
+                    oscillatorRef.current = osc;
+                } catch(e){}
+            };
+
+            const requestNotification = async () => {
+                if (!('Notification' in window)) {
+                    alert("Browser ini tidak mendukung notifikasi desktop.");
+                    return;
+                }
+                const res = await Notification.requestPermission();
+                setNotificationsEnabled(res === 'granted');
+                if (res === 'granted') showToast("Notifikasi Sistem Aktif!");
+            };
+
+            const fireSystemNotification = (title, body) => {
+                if (userStatus === 'dnd') return;
+                if (Notification.permission === 'granted') {
+                    try { new Notification(title, { body, icon: "https://cdn-icons-png.flaticon.com/512/3239/3239952.png" }); } catch(e){}
+                }
+            };
+
+            const checkNotifications = (now) => {
+                if (userStatus === 'dnd') return;
+                const timeStr = now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', hour12:false}).replace('.',':');
+                const dayName = getDayName(now);
+
+                schedules.forEach(t => {
+                    if (t.day !== dayName || !t.active) return;
+                    
+                    // Pre-alert 10 min
+                    const [h, m] = t.time.split(':').map(Number);
+                    const target = new Date(now); target.setHours(h, m, 0, 0);
+                    const diff = (target - now) / 60000;
+                    
+                    if (diff > 9 && diff < 10) {
+                        const k = `${t.id}_pre`;
+                        if(!notificationsSentRef.current.has(k)) {
+                            showToast(`10 Menit lagi: ${t.title}`);
+                            fireSystemNotification("Siap-siap!", `10 Menit lagi: ${t.title}`);
+                            playCoinSound();
+                            notificationsSentRef.current.add(k);
+                        }
+                    }
+
+                    // Start
+                    if (t.time === timeStr) {
+                         const k = `${t.id}_start_${timeStr}`;
+                         if(!notificationsSentRef.current.has(k)) {
+                             triggerAlarm(t.title);
+                             fireSystemNotification("Misi Dimulai!", t.title);
+                             notificationsSentRef.current.add(k);
+                         }
+                    }
+
+                    // Overdue
+                    if (t.endTime && !t.completed) {
+                        if (timeStr > t.endTime) {
+                             const k = `${t.id}_late_${t.endTime}`; 
+                             if (!notificationsSentRef.current.has(k)) {
+                                showToast(`Waktu Habis! Anda melewatkan: ${t.title}`);
+                                fireSystemNotification("Waktu Habis!", `Anda melewatkan: ${t.title}`);
+                                playCoinSound();
+                                notificationsSentRef.current.add(k);
+                             }
+                        }
+                    }
+                });
+            };
+
+            const stopAlarm = () => {
+                setIsRinging(false);
+                if (oscillatorRef.current) oscillatorRef.current.stop();
+                if (audioContextRef.current) audioContextRef.current.close();
+            };
+
+            // Task Handlers
+            const handleAddTask = () => {
+                if (!newTitle) return showToast("Judul wajib diisi");
+                if (schedules.filter(s => s.day === newDay).length >= 10) return showToast("Max 10 misi/hari!");
+                if (newTitle.length < 3) return showToast("Judul terlalu pendek");
+                
+                const [sh, sm] = newTime.split(':').map(Number);
+                const [eh, em] = newEndTime.split(':').map(Number);
+                if (eh*60+em <= sh*60+sm) return showToast("Waktu selesai salah!");
+                if ((eh*60+em) - (sh*60+sm) < 10) return showToast("Min. durasi 10 menit");
+
+                setSchedules([...schedules, { id: Date.now(), title: newTitle, time: newTime, endTime: newEndTime, day: newDay, active: true, completed: false }]);
+                setNewTitle(''); setIsModalOpen(false); showToast("Misi ditambah!");
+            };
+
+            const completeTask = (id) => {
+                const task = schedules.find(s => s.id === id);
+                if (!task) return;
+                
+                // Validate Time
+                const now = new Date();
+                if (getDayName(now) !== task.day) return showToast("Bukan jadwal hari ini!");
+                const [h, m] = task.time.split(':').map(Number);
+                const start = new Date(); start.setHours(h, m, 0, 0);
+                if (now < start) return showToast("Belum waktunya dimulai!");
+
+                setSchedules(schedules.map(s => s.id === id ? { ...s, active: false, completed: true } : s));
+                setPoints(p => p + 10);
+                setXp(x => x + 5);
+                playCoinSound();
+                showToast("Selesai! +10 Poin +5 EXP");
+            };
+
+            // Shop Handlers
+            const buyBorder = (item) => {
+                if (ownedBorders.includes(item.id)) return showToast("Sudah punya!");
+                if (points < item.price) return showToast("Poin kurang!");
+                setPoints(p => p - item.price);
+                setOwnedBorders(prev => [...prev, item.id]);
+                showToast(`${item.name} terbeli!`);
+            };
+
+            const buyFreeze = () => {
+                if (points < 200) return showToast("Poin kurang!");
+                setPoints(p => p - 200);
+                setFreezeInventory(f => f + 1);
+                showToast("Freeze terbeli!");
+            };
+
+            // Social (Simulation) Handlers
+            const handleSearch = (e) => {
+                e.preventDefault();
+                if (!searchQuery) return;
+                setIsSearching(true);
+                setTimeout(() => {
+                    const res = MOCK_USERS.filter(u => u.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                    setSearchResults(res);
+                    setIsSearching(false);
+                }, 800);
+            };
+
+            const sendFriendRequest = (user) => {
+                if (onlineFriends.find(f => f.uid === user.uid)) return showToast("Sudah berteman");
+                showToast(`Request dikirim ke ${user.name}`);
+                // Simulate accept
+                setTimeout(() => {
+                    setIncomingRequests(prev => [...prev, { ...user, id: Date.now() }]);
+                    showToast(`${user.name} mengirim balik permintaan!`);
+                }, 3000);
+            };
+
+            const acceptFriend = (req) => {
+                setOnlineFriends(prev => [...prev, { ...req, status: 'online' }]);
+                setIncomingRequests(prev => prev.filter(r => r.id !== req.id));
+                showToast("Berteman!");
+            };
+
+            const declineRequest = (id) => {
+                setIncomingRequests(prev => prev.filter(r => r.id !== id));
+                showToast("Ditolak.");
+            };
+
+            // Chat (Simulation)
+            const openChat = (friend) => {
+                setActiveChatFriend(friend);
+                if (!chatMessages[friend.uid]) setChatMessages(prev => ({...prev, [friend.uid]: []}));
+                setTimeout(() => messagesEndRef.current?.scrollIntoView(), 100);
+            };
+
+            const sendChat = (e) => {
+                e.preventDefault();
+                if (!newMessage.trim()) return;
+                const uid = activeChatFriend.uid;
+                const msg = { id: Date.now(), text: newMessage, senderUid: 'me', timestamp: Date.now() };
+                
+                setChatMessages(prev => ({ ...prev, [uid]: [...(prev[uid]||[]), msg] }));
+                setNewMessage('');
+                
+                // Simulate Reply
+                setTimeout(() => {
+                    const reply = { id: Date.now()+1, text: "Halo! Keren banget progress kamu!", senderUid: uid, timestamp: Date.now() };
+                    setChatMessages(prev => ({ ...prev, [uid]: [...(prev[uid]||[]), reply] }));
+                    playCoinSound();
+                    setTimeout(() => messagesEndRef.current?.scrollIntoView(), 100);
+                }, 2000);
+            };
+
+            // AI Simulation
+            const runAiMission = () => {
+                setIsAiLoading(true);
+                setTimeout(() => {
+                    const mockMissions = [
+                        { id: Date.now(), title: "Riset Topik", time: "09:00", endTime: "10:00", day: newDay, active: true },
+                        { id: Date.now()+1, title: "Praktek Coding", time: "10:30", endTime: "12:00", day: newDay, active: true }
+                    ];
+                    setSchedules(prev => [...prev, ...mockMissions]);
+                    setIsAiLoading(false);
+                    setIsModalOpen(false);
+                    showToast("2 Misi AI ditambahkan!");
+                }, 1500);
+            };
+
+            const runAiMentor = () => {
+                const msgs = [
+                    "Level mu makin tinggi, semangat terus!",
+                    "Jangan lupa istirahat, pahlawan!",
+                    "Streak kamu luar biasa, pertahankan!"
+                ];
+                alert("🧙‍♂️ Mentor: " + msgs[Math.floor(Math.random()*msgs.length)]);
+            };
+            
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setUserProfile(p => ({...p, avatar: reader.result}));
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            return (
+                <div className={`flex justify-center h-full ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+                    <div className={`w-full max-w-md h-full relative flex flex-col shadow-2xl overflow-hidden ${theme.bg} ${theme.text}`}>
+                        
+                        {/* Toast */}
+                        {toastMessage && <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[70] bg-gray-800 text-white px-4 py-2 rounded-full shadow-lg text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-4"><BellIcon size={16}/>{toastMessage}</div>}
+
+                        {/* Alarm Overlay */}
+                        {isRinging && userStatus !== 'dnd' && (
+                            <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-red-600/95 text-white animate-in zoom-in">
+                                <ClockIcon size={80} className="mb-4 animate-bounce" />
+                                <h1 className="text-2xl font-bold mb-4">{currentAlarmTitle}</h1>
+                                <button onClick={stopAlarm} className="bg-white text-red-600 px-8 py-3 rounded-full font-bold shadow-lg active:scale-95"><StopIcon /> MATIKAN</button>
+                            </div>
+                        )}
+
+                        {/* Header */}
+                        {activeTab === 'home' && (
+                            <div className={`px-5 pt-6 pb-2 flex justify-between items-center ${theme.navBg} border-b-0`}>
+                                <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500">Task Reminder</h1>
+                                <div onClick={() => setActiveTab('profile')} className="cursor-pointer"><UserAvatar src={userProfile.avatar} borderId={userProfile.border} size="sm" status={userStatus} isDarkMode={isDarkMode}/></div>
+                            </div>
+                        )}
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto pb-24 no-scrollbar">
+                            
+                            {/* HOME TAB */}
+                            {activeTab === 'home' && (
+                                <div className="p-5 space-y-4">
+                                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                                        {DAYS.map(d => (
+                                            <button key={d} onClick={() => setSelectedDay(d)} className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${selectedDay === d ? 'bg-blue-600 text-white shadow-lg' : `bg-gray-500/10 ${theme.text}`}`}>{d}</button>
+                                        ))}
+                                    </div>
+
+                                    <div className="flex justify-between px-2">
+                                        <div className="flex items-center gap-2 text-orange-500 text-sm font-bold"><FlameIcon size={16}/> {streak} Hari</div>
+                                        <div className="flex items-center gap-2 text-yellow-500 text-sm font-bold"><CoinIcon size={16}/> {points} Poin</div>
+                                    </div>
+
+                                    <div className={`text-center py-6 rounded-3xl border mb-2 ${theme.cardBg}`}>
+                                        <div className="text-5xl font-mono font-bold tracking-tighter">{currentTime.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', second:'2-digit'}).replace(/\./g, ':')}</div>
+                                        <div className={`text-xs uppercase tracking-widest mt-1 ${theme.subText}`}>{new Date().toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long'})}</div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {schedules.filter(s => s.day === selectedDay).sort((a,b) => a.time.localeCompare(b.time)).map(task => (
+                                            <div key={task.id} className={`p-4 rounded-xl flex items-center justify-between border ${task.active ? theme.cardBg : 'opacity-50 border-transparent bg-gray-500/10'}`}>
+                                                <div>
+                                                    <div className={`font-mono text-lg font-bold ${task.active ? 'text-blue-500' : theme.subText}`}>{task.time} - {task.endTime}</div>
+                                                    <div className={`text-sm ${task.active ? theme.text : 'line-through'}`}>{task.title}</div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => completeTask(task.id)} className={`p-2 rounded-full ${task.active ? 'bg-green-500/20 text-green-500 active:scale-95' : 'bg-gray-500/20 text-gray-400 cursor-not-allowed'}`}><CheckCircleIcon size={20}/></button>
+                                                    <button onClick={() => {if(confirm('Hapus?')) setSchedules(s => s.filter(i => i.id !== task.id))}} className="p-2 rounded-full bg-red-500/10 text-red-500 active:scale-95"><TrashIcon size={20}/></button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {schedules.filter(s => s.day === selectedDay).length === 0 && <div className={`text-center py-10 ${theme.subText}`}>Tidak ada misi.</div>}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* SHOP TAB */}
+                            {activeTab === 'shop' && (
+                                <div className="p-5">
+                                    <div className="text-center mb-6"><h2 className="text-2xl font-bold">Toko</h2><div className="flex justify-center items-center gap-2 text-yellow-500 font-bold"><CoinIcon/> {points}</div></div>
+                                    
+                                    <h3 className={`text-sm font-bold uppercase mb-2 ${theme.subText}`}>Item</h3>
+                                    <div className={`p-4 rounded-xl border flex items-center justify-between mb-6 ${theme.cardBg}`}>
+                                        <div className="flex items-center gap-3"><div className="p-3 rounded-lg bg-blue-500/20 text-blue-500"><ShieldIcon/></div><div><div className="font-bold">Streak Freeze</div><div className={`text-xs ${theme.subText}`}>Miliki: {freezeInventory}</div></div></div>
+                                        <button onClick={buyFreeze} className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-bold text-sm active:scale-95">200</button>
+                                    </div>
+
+                                    <h3 className={`text-sm font-bold uppercase mb-2 ${theme.subText}`}>Bingkai</h3>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {BORDERS.map(b => {
+                                            const owned = ownedBorders.includes(b.id);
+                                            return (
+                                                <div key={b.id} className={`p-3 rounded-xl border flex flex-col items-center gap-2 ${theme.cardBg}`}>
+                                                    <div className={`relative ${b.css} rounded-full p-1`}><img src={userProfile.avatar} className="w-10 h-10 rounded-full object-cover bg-gray-200"/></div>
+                                                    <div className="text-center"><div className="font-bold text-sm">{b.name}</div><div className="text-xs text-yellow-500">{owned ? "Milik" : b.price}</div></div>
+                                                    {owned ? 
+                                                        (userProfile.border === b.id ? <button disabled className="text-xs w-full bg-green-500/20 text-green-500 px-3 py-2 rounded font-bold">Dipakai</button> : <button onClick={() => setUserProfile(p => ({...p, border: b.id}))} className="text-xs w-full bg-blue-600 text-white px-3 py-2 rounded font-bold active:scale-95">Pakai</button>) 
+                                                        : <button onClick={() => buyBorder(b)} className="text-xs w-full bg-gray-600 text-white px-3 py-2 rounded font-bold active:scale-95">Beli</button>
+                                                    }
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* SOCIAL TAB */}
+                            {activeTab === 'social' && (
+                                <div className="p-5">
+                                    <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">Sosial</h2><button onClick={() => setShowSearchModal(true)} className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-bold flex gap-1 active:scale-95"><UserPlusIcon size={16}/> Cari</button></div>
+                                    
+                                    {incomingRequests.length > 0 && <div className="mb-6"><h3 className="text-sm font-bold text-blue-500 uppercase mb-3">Permintaan Masuk</h3><div className="space-y-3">{incomingRequests.map(req => <div key={req.id} className={`p-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 flex items-center justify-between`}><div className="flex items-center gap-3"><UserAvatar src={req.avatar} borderId={req.border} size="md" status={req.status} isDarkMode={isDarkMode} /><div><div className="font-bold">{req.name}</div><div className="text-xs text-orange-400">{req.streak} Streak</div></div></div><div className="flex gap-2"><button onClick={() => acceptFriend(req)} className="text-green-500 bg-green-500/20 p-2 rounded-full active:scale-90"><CheckCircleIcon size={18}/></button><button onClick={() => declineRequest(req.id)} className="text-red-500 bg-red-500/20 p-2 rounded-full active:scale-90"><XIcon size={18}/></button></div></div>)}</div></div>}
+                                    
+                                    <h3 className={`text-xs font-bold uppercase mb-3 ${theme.subText}`}>Daftar Teman</h3>
+                                    <div className="space-y-3">{onlineFriends.length === 0 ? <div className={`text-center py-8 border-2 border-dashed border-gray-700 rounded-xl ${theme.subText}`}>Belum ada teman.</div> : onlineFriends.map((friend, idx) => <div key={friend.uid} className={`p-4 rounded-2xl border ${theme.cardBg} flex items-center justify-between`}><div className="flex items-center gap-3"><UserAvatar src={friend.avatar} borderId={friend.border} size="md" status={friend.status} isDarkMode={isDarkMode} /><div><div className="font-bold">{friend.name}</div><div className="text-xs text-orange-400 flex items-center gap-1"><FlameIcon size={12}/> {friend.streak} Streak</div></div></div><button onClick={() => openChat(friend)} className="bg-blue-600 text-white p-2 rounded-full active:scale-95 shadow-md"><MessageCircleIcon size={18}/></button></div>)}</div>
+                                </div>
+                            )}
+
+                            {/* PROFILE TAB */}
+                            {activeTab === 'profile' && (
+                                <div className="p-5 text-center">
+                                    <h2 className="text-2xl font-bold mb-6">Profil</h2>
+                                    <div className={`p-6 rounded-3xl mb-6 shadow-sm border ${theme.cardBg} flex flex-col items-center`}>
+                                        <div className="mb-4"><UserAvatar src={userProfile.avatar} borderId={userProfile.border} size="xl" status={userStatus} isDarkMode={isDarkMode} /></div>
+                                        <h3 className="text-xl font-bold">{userProfile.name}</h3>
+                                        <div className="w-full h-3 bg-gray-600 rounded-full mt-3 mb-1 overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${getLevelProgress(xp)}%`}}></div></div>
+                                        <div className={`text-xs flex justify-between w-full font-bold ${theme.subText}`}><span>Lv. {getLevel(xp)}</span><span>{getLevelProgress(xp)}/100 EXP</span></div>
+                                        <button onClick={() => setIsEditProfileModalOpen(true)} className="mt-5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex gap-2 active:scale-95 w-full justify-center"><PencilIcon size={16}/> Edit Profil</button>
+                                        <button onClick={runAiMentor} className="mt-2 w-full border border-purple-500 bg-purple-500/10 text-purple-500 px-4 py-2 rounded-lg text-sm font-bold flex justify-center gap-2 active:scale-95"><BrainIcon size={16}/> Mentor AI</button>
+                                    </div>
+
+                                    <div className="mb-6 text-left">
+                                        <h4 className={`text-sm font-bold uppercase mb-2 ${theme.subText}`}>Status</h4>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {['online','idle','dnd','invisible'].map(s => <button key={s} onClick={() => setUserStatus(s)} className={`p-3 rounded-lg border flex items-center justify-center gap-2 text-sm font-bold capitalize ${userStatus === s ? 'border-blue-500 bg-blue-500/10 text-blue-500' : `border-gray-600 ${theme.subText}`}`}><div className={`w-2 h-2 rounded-full status-${s}`}></div>{s}</button>)}
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-6 text-left">
+                                        <h4 className={`text-sm font-bold uppercase mb-2 ${theme.subText}`}>Pengaturan</h4>
+                                        <div className={`rounded-xl border overflow-hidden ${theme.cardBg} ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                                            <div className="p-4 border-b border-gray-600/30 flex justify-between items-center"><div className="flex gap-3 text-sm font-bold"><BellIcon size={20} className={notificationsEnabled ? "text-green-500" : ""}/> Notifikasi Web</div><button onClick={requestNotification} className={`text-xs px-3 py-1 rounded font-bold ${notificationsEnabled ? 'bg-green-500/20 text-green-500' : 'bg-blue-600 text-white'}`}>{notificationsEnabled ? 'ON' : 'OFF'}</button></div>
+                                            <div className="p-4 border-b border-gray-600/30 flex justify-between items-center"><div className="flex gap-3 text-sm font-bold"><MoonIcon size={20}/> Dark Mode</div><button onClick={() => setIsDarkMode(!isDarkMode)} className={`w-10 h-5 rounded-full relative ${isDarkMode ? 'bg-blue-600' : 'bg-gray-400'}`}><div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${isDarkMode ? 'left-6' : 'left-1'}`}></div></button></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+
+                        {/* NAVBAR */}
+                        <div className={`absolute bottom-0 w-full px-6 py-3 flex justify-between items-center ${theme.navBg}`}>
+                            <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center ${activeTab === 'home' ? 'text-blue-500' : 'text-gray-500'}`}><ClockIcon/><span className="text-[10px] font-bold mt-1">Misi</span></button>
+                            <button onClick={() => setActiveTab('shop')} className={`flex flex-col items-center ${activeTab === 'shop' ? 'text-blue-500' : 'text-gray-500'}`}><StoreIcon/><span className="text-[10px] font-bold mt-1">Toko</span></button>
+                            <div className="relative -top-5"><button onClick={() => setIsModalOpen(true)} className="w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 border-4 border-gray-800"><PlusIcon size={28}/></button></div>
+                            <button onClick={() => setActiveTab('social')} className={`flex flex-col items-center relative ${activeTab === 'social' ? 'text-blue-500' : 'text-gray-500'}`}>{incomingRequests.length > 0 && <span className="absolute -top-1 -right-2 w-3 h-3 bg-red-500 rounded-full badge-anim"></span>}<UsersIcon/><span className="text-[10px] font-bold mt-1">Sosial</span></button>
+                            <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center ${activeTab === 'profile' ? 'text-blue-500' : 'text-gray-500'}`}><UserIcon/><span className="text-[10px] font-bold mt-1">Profil</span></button>
+                        </div>
+
+                        {/* MODAL: ADD TASK */}
+                        {isModalOpen && (
+                            <div className="absolute inset-0 z-50 bg-black/60 flex items-end justify-center animate-in fade-in">
+                                <div className={`w-full rounded-t-3xl p-6 ${theme.modalBg} animate-in slide-in-from-bottom`}>
+                                    <div className="flex justify-between mb-4"><h3 className="text-xl font-bold">Misi Baru</h3><button onClick={() => setIsModalOpen(false)}><XIcon/></button></div>
+                                    <div className="flex justify-end mb-4"><button onClick={() => setShowAiInput(!showAiInput)} className="text-xs text-purple-400 border border-purple-400 px-3 py-1 rounded-full flex gap-1 font-bold"><SparklesIcon size={12}/> AI</button></div>
+                                    
+                                    {showAiInput ? (
+                                        <div className="space-y-4">
+                                            <textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="Ketik disini..." className={`w-full p-3 rounded-xl h-24 ${theme.inputBg}`}/>
+                                            <button onClick={runAiMission} disabled={isAiLoading} className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold">{isAiLoading ? "Loading..." : "Generate"}</button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">{DAYS.map(d => <button key={d} onClick={() => setNewDay(d)} className={`px-3 py-1 rounded-lg text-sm border ${newDay === d ? 'bg-blue-600 border-blue-600 text-white font-bold' : `border-gray-500 font-bold ${theme.subText}`}`}>{d}</button>)}</div>
+                                            <div className="flex gap-2"><input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} className={`flex-1 p-3 rounded-xl font-bold ${theme.inputBg}`}/><input type="time" value={newEndTime} onChange={e => setNewEndTime(e.target.value)} className={`flex-1 p-3 rounded-xl font-bold ${theme.inputBg}`}/></div>
+                                            <input type="text" placeholder="Nama Misi..." value={newTitle} onChange={e => setNewTitle(e.target.value)} className={`w-full p-3 rounded-xl font-bold ${theme.inputBg}`}/>
+                                            <button onClick={handleAddTask} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold active:scale-95">Simpan</button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL: EDIT PROFILE */}
+                        {isEditProfileModalOpen && (
+                            <div className="absolute inset-0 z-[60] bg-black/60 flex items-end justify-center animate-in fade-in">
+                                <div className={`w-full rounded-t-3xl p-6 ${theme.modalBg} animate-in slide-in-from-bottom max-h-[80vh] overflow-y-auto`}>
+                                    <div className="flex justify-between mb-4"><h3 className="text-xl font-bold">Edit Profil</h3><button onClick={() => setIsEditProfileModalOpen(false)}><XIcon/></button></div>
+                                    
+                                    <div className="text-center mb-6">
+                                        <div className="relative inline-block mb-4 group">
+                                            <UserAvatar src={userProfile.avatar} borderId={userProfile.border} size="xl" />
+                                            <button onClick={() => fileInputRef.current.click()} className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full shadow-lg"><CameraIcon size={16}/></button>
+                                            <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*"/>
+                                        </div>
+                                        <input type="text" value={userProfile.name} onChange={e => setUserProfile(p => ({...p, name: e.target.value}))} className={`w-full p-3 rounded-xl text-center font-bold ${theme.inputBg}`}/>
+                                    </div>
+
+                                    <h4 className="font-bold text-sm uppercase mb-2 text-gray-500">Avatar Bawaan</h4>
+                                    <div className="grid grid-cols-6 gap-2 mb-6">
+                                        {AVATARS.map((url, i) => <img key={i} src={url} onClick={() => setUserProfile(p => ({...p, avatar: url}))} className={`w-10 h-10 rounded-full cursor-pointer border-2 bg-gray-200 ${userProfile.avatar === url ? 'border-blue-500 scale-110' : 'border-transparent'}`} />)}
+                                    </div>
+
+                                    <h4 className="font-bold text-sm uppercase mb-2 text-gray-500">Bingkai Dimiliki</h4>
+                                    <div className="grid grid-cols-5 gap-3 mb-6">
+                                        {ownedBorders.map(id => {
+                                            const b = BORDERS.find(x => x.id === id);
+                                            return b ? (
+                                                <div key={id} onClick={() => setUserProfile(p => ({...p, border: id}))} className={`cursor-pointer flex flex-col items-center gap-1 ${userProfile.border === id ? 'scale-110' : 'opacity-70'}`}>
+                                                    <div className={`${b.css} rounded-full p-1`}><img src={userProfile.avatar} className="w-8 h-8 rounded-full object-cover bg-gray-800"/></div>
+                                                </div>
+                                            ) : null;
+                                        })}
+                                    </div>
+                                    <button onClick={() => setIsEditProfileModalOpen(false)} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Simpan</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL: SEARCH */}
+                        {showSearchModal && (
+                            <div className="absolute inset-0 z-[60] bg-black/60 flex items-end justify-center animate-in fade-in">
+                                <div className={`w-full rounded-t-3xl p-6 h-[80vh] ${theme.modalBg} flex flex-col animate-in slide-in-from-bottom`}>
+                                    <div className="flex justify-between mb-4"><h3 className="text-xl font-bold">Cari Teman</h3><button onClick={() => setShowSearchModal(false)}><XIcon/></button></div>
+                                    <form onSubmit={handleSearch} className={`flex gap-2 p-3 rounded-xl mb-4 ${theme.inputBg}`}><SearchIcon className="text-gray-400"/><input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Cari teman simulasi..." className="bg-transparent w-full outline-none"/><button type="submit" className="text-blue-500 font-bold">Cari</button></form>
+                                    <div className="flex-1 overflow-y-auto space-y-2">
+                                        {isSearching && <div className="text-center font-bold opacity-50">Mencari...</div>}
+                                        {searchResults.map(u => (
+                                            <div key={u.uid} className={`p-3 rounded-xl border flex justify-between items-center ${theme.cardBg}`}>
+                                                <div className="flex items-center gap-3"><UserAvatar src={u.avatar} borderId={u.border} size="sm" status={u.status}/><div><div className="font-bold text-sm">{u.name}</div><div className="text-xs text-orange-500">{u.streak} Streak</div></div></div>
+                                                <button onClick={() => sendFriendRequest(u)} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Add</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* CHAT OVERLAY */}
+                        {activeChatFriend && (
+                            <div className={`absolute inset-0 z-[60] flex flex-col ${theme.bg} animate-in slide-in-from-bottom`}>
+                                <div className={`p-4 flex items-center gap-3 border-b ${theme.navBg}`}>
+                                    <button onClick={() => setActiveChatFriend(null)}><XIcon/></button>
+                                    <UserAvatar src={activeChatFriend.avatar} borderId={activeChatFriend.border} size="sm" status={activeChatFriend.status} isDarkMode={isDarkMode}/>
+                                    <div className="font-bold">{activeChatFriend.name}</div>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                    {(chatMessages[activeChatFriend.uid] || []).length === 0 && <div className="text-center opacity-50 text-sm mt-10">Kirim pesan pertama...</div>}
+                                    {(chatMessages[activeChatFriend.uid] || []).map(m => (
+                                        <div key={m.id} className={`flex ${m.senderUid === 'me' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[75%] p-3 rounded-2xl text-sm ${m.senderUid === 'me' ? 'bg-blue-600 text-white rounded-br-none' : `${theme.cardBg} rounded-bl-none border`}`}>{m.text}</div>
+                                        </div>
+                                    ))}
+                                    <div ref={messagesEndRef}/>
+                                </div>
+                                <form onSubmit={sendChat} className={`p-3 flex gap-2 border-t ${theme.navBg}`}>
+                                    <input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Pesan..." className={`flex-1 p-3 rounded-full ${theme.inputBg}`}/>
+                                    <button type="submit" className="bg-blue-600 text-white p-3 rounded-full"><SendIcon size={20}/></button>
+                                </form>
+                            </div>
+                        )}
+
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
