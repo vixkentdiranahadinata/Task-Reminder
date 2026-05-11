@@ -742,32 +742,29 @@
                         </div>
 
                         {/* MOBILE BOTTOM NAVBAR (Hidden on Desktop) */}
-                        <nav className={`md:hidden absolute bottom-0 w-full pt-2 pb-safe grid grid-cols-3 items-end justify-items-center z-40 border-t ${theme.navBg} border-gray-700/30`}>
+                        <nav className={`md:hidden absolute bottom-0 w-full pt-2 pb-safe flex justify-between items-center z-40 border-t ${theme.navBg} border-gray-700/30`}>
                             
                             {/* KIRI: MISI */}
-                            <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 p-2 w-full transition-colors ${activeTab === 'home' ? 'text-blue-500' : 'text-gray-500'}`}>
+                            <button onClick={() => setActiveTab('home')} className={`flex-1 flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'home' ? 'text-blue-500' : 'text-gray-500'}`}>
                                 <ClockIcon size={24}/><span className="text-[10px] font-bold">Misi</span>
                             </button>
                             
-                            {/* TENGAH: TOMBOL TAMBAH (ATAS) & TOKO (BAWAH) */}
-                            <div className="relative flex flex-col items-center justify-end w-full h-full">
-                                {/* Tombol Tambah Melayang */}
-                                <div className="absolute -top-10 flex justify-center w-full z-50">
-                                    <button onClick={() => { setNewDay(selectedDay); setIsModalOpen(true); }} className="w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl active:scale-95 border-4 border-gray-100 dark:border-gray-900 transition-transform hover:scale-105">
-                                        <PlusIcon size={28}/>
-                                    </button>
-                                </div>
-                                
-                                {/* Tombol Toko */}
-                                <button onClick={() => setActiveTab('shop')} className={`flex flex-col items-center gap-1 p-2 w-full transition-colors ${activeTab === 'shop' ? 'text-blue-500' : 'text-gray-500'}`}>
-                                    <StoreIcon size={24}/><span className="text-[10px] font-bold">Toko</span>
-                                </button>
-                            </div>
+                            {/* TENGAH: TOKO */}
+                            <button onClick={() => setActiveTab('shop')} className={`flex-1 flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'shop' ? 'text-blue-500' : 'text-gray-500'}`}>
+                                <StoreIcon size={24}/><span className="text-[10px] font-bold">Toko</span>
+                            </button>
                             
                             {/* KANAN: PROFIL */}
-                            <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 p-2 w-full transition-colors ${activeTab === 'profile' ? 'text-blue-500' : 'text-gray-500'}`}>
+                            <button onClick={() => setActiveTab('profile')} className={`flex-1 flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === 'profile' ? 'text-blue-500' : 'text-gray-500'}`}>
                                 <UserIcon size={24}/><span className="text-[10px] font-bold">Profil</span>
                             </button>
+
+                            {/* TOMBOL TAMBAH MELAYANG (FAB) - Dipisah agar tidak memblokir tombol Toko */}
+                            <div className="absolute left-1/2 -translate-x-1/2 -top-14 z-50 pointer-events-none">
+                                <button onClick={() => { setNewDay(selectedDay); setIsModalOpen(true); }} className="w-14 h-14 pointer-events-auto bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-500/30 active:scale-95 border-4 border-gray-100 dark:border-gray-900 transition-transform hover:scale-105">
+                                    <PlusIcon size={28}/>
+                                </button>
+                            </div>
                         </nav>
 
                         {/* --- MODALS (Responsive Centered) --- */}
