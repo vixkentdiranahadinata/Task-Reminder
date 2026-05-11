@@ -742,23 +742,30 @@
                         </div>
 
                         {/* MOBILE BOTTOM NAVBAR (Hidden on Desktop) */}
-                        <nav className={`md:hidden absolute bottom-0 w-full px-6 py-2 flex justify-between items-center z-40 border-t ${theme.navBg} border-gray-700/30 pb-safe`}>
-                            <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 p-2 relative transition-colors ${activeTab === 'home' ? 'text-blue-500' : 'text-gray-500'}`}>
+                        <nav className={`md:hidden absolute bottom-0 w-full pt-2 pb-safe grid grid-cols-3 items-end justify-items-center z-40 border-t ${theme.navBg} border-gray-700/30`}>
+                            
+                            {/* KIRI: MISI */}
+                            <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 p-2 w-full transition-colors ${activeTab === 'home' ? 'text-blue-500' : 'text-gray-500'}`}>
                                 <ClockIcon size={24}/><span className="text-[10px] font-bold">Misi</span>
                             </button>
-                            <button onClick={() => setActiveTab('shop')} className={`flex flex-col items-center gap-1 p-2 relative transition-colors ${activeTab === 'shop' ? 'text-blue-500' : 'text-gray-500'}`}>
-                                <StoreIcon size={24}/><span className="text-[10px] font-bold">Toko</span>
-                            </button>
                             
-                            <div className="relative -top-6 mx-2">
-                                <button onClick={() => { setNewDay(selectedDay); setIsModalOpen(true); }} className="w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl active:scale-95 border-4 border-gray-100 dark:border-gray-900 transition-transform">
-                                    <PlusIcon size={28}/>
+                            {/* TENGAH: TOMBOL TAMBAH (ATAS) & TOKO (BAWAH) */}
+                            <div className="relative flex flex-col items-center justify-end w-full h-full">
+                                {/* Tombol Tambah Melayang */}
+                                <div className="absolute -top-10 flex justify-center w-full z-50">
+                                    <button onClick={() => { setNewDay(selectedDay); setIsModalOpen(true); }} className="w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl active:scale-95 border-4 border-gray-100 dark:border-gray-900 transition-transform hover:scale-105">
+                                        <PlusIcon size={28}/>
+                                    </button>
+                                </div>
+                                
+                                {/* Tombol Toko */}
+                                <button onClick={() => setActiveTab('shop')} className={`flex flex-col items-center gap-1 p-2 w-full transition-colors ${activeTab === 'shop' ? 'text-blue-500' : 'text-gray-500'}`}>
+                                    <StoreIcon size={24}/><span className="text-[10px] font-bold">Toko</span>
                                 </button>
                             </div>
-
-                            <div className="w-[48px]"></div> {/* Placeholder untuk menyeimbangkan layout tengah */}
                             
-                            <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 p-2 relative transition-colors ${activeTab === 'profile' ? 'text-blue-500' : 'text-gray-500'}`}>
+                            {/* KANAN: PROFIL */}
+                            <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 p-2 w-full transition-colors ${activeTab === 'profile' ? 'text-blue-500' : 'text-gray-500'}`}>
                                 <UserIcon size={24}/><span className="text-[10px] font-bold">Profil</span>
                             </button>
                         </nav>
